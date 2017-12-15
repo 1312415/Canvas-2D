@@ -1,25 +1,243 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <title>Zenva Action Platformer</title>
-    <script src="lib/quintus.js"></script>
-    <script src="lib/quintus_sprites.js"></script>
-    <script src="lib/quintus_scenes.js"></script>
-    <script src="lib/quintus_input.js"></script>
-    <script src="lib/quintus_anim.js"></script>
-    <script src="lib/quintus_2d.js"></script>
-    <script src="lib/quintus_touch.js"></script>
-    <script src="lib/quintus_ui.js"></script>
-    <script src="lib/quintus_tmx.js"></script>
-    <script src="lib/quintus_audio.js"></script>
-    <script src="scripts/player.js"></script>
-    <script src="scripts/enemy.js"></script>
-    <script src="scripts/game.js"></script>
-    <style> 
-      body { padding:0px; margin:0px; background-color: black;} 
-    </style>
-  </head>
-  <body>
-  </body>
+<html>
+<head>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src="https://d3js.org/d3-array.v1.min.js"></script>
+  <script src="https://d3js.org/d3-geo.v1.min.js"></script>
+  <style media="screen">
+    .data, .data2{
+      display: none;
+    }
+    .show{
+      display: block !important;
+    }
+  </style>
+  <script
+    src="https://code.jquery.com/jquery-3.2.1.min.js"
+    integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+    crossorigin="anonymous">
+  </script>
+  <script src="./jquery.csv.js"></script>
+</head>
+<body>
+    <button type="button" onclick='LoadAll()'>
+      load All
+    </button>
+    <button type="button" onclick='Circle()'>
+      Overlap 2 circle
+    </button>
+    <button type="button" onclick='Query()'>
+      Query
+    </button>
+
+    <div class="data">
+      <div class="row">
+        <button type="button" name="button" onclick='Overlap()'>
+          overlap
+        </button>
+      </div>
+      <label for="A">Radious of A</label>
+      <input type="number" name="R1" value="" id='A'>
+      <label for="B">Radious of B</label>
+      <input type="number" name="R2" value="" id='B'>
+
+
+    </div>
+    <div class="data2">
+      <div class="row">
+        <label for="DBH">>DBH</label>
+        <input type="number" value="" id='DBH'>
+        <label for="PlotSize">PlotSize</label>
+        <select id='PlotSize'>
+            <option value = '-1'>.......</option>
+        </select>
+        <br>
+        <label for="qSpecies">Species</label>
+        <select id='qSpecies'>
+            <option value = '-1'>.......</option>
+        </select>
+        <br>
+        <button type="button" name="button" onclick='QueryClick()'>
+          query
+        </button>
+
+      </div>
+
+    </div>
+    <div class="map">
+
+    </div>
+    <script type="text/javascript">
+    var haveA = false;
+    var A,B;
+    var currentProjection;
+    var Globaldata;
+    function QueryClick(){
+      var data = Globaldata;
+      var processedData = [];
+      function Draw(long, lat, color){
+          $('svg').append( parseSVG(`<circle class='point'  cx="${currentProjection([long, lat])[0]}" cy="${currentProjection([long, lat])[1] }" r="1" fill="${color}" />`))
+      }
+      $('.point').remove();
+      data.forEach((line)=>{
+        if( !$('#DBH').val() || ($('#DBH').val() && $('#DBH').val() <= Number(line.DBH)) ){
+           if( $('#PlotSize').val() == -1 ||  $('#PlotSize').val() === line.PlotSize ){
+             if( $('#qSpecies').val() == -1 ||  $('#qSpecies').val() === line.qSpecies ){
+               Draw(line.Longitude, line.Latitude, 'green')
+             }
+           }
+         }
+      })
+    }
+    function Query(){
+      if($('.data').hasClass('show')){
+        $('.data').removeClass('show')
+      }
+      var projection = DrawMap();
+      currentProjection = projection;
+      $.get('/data/trees.csv', function (text) {
+        let data = $.csv.toObjects(text);
+          var PlotSize = new Set();
+          var qSpecies = new Set();
+          Globaldata = data;
+        data.forEach((line)=>{
+          PlotSize.add(line.PlotSize);
+          qSpecies.add(line.qSpecies);
+        })
+
+        for (let plot of PlotSize) {
+          $('#PlotSize').append($('<option>', {
+              value: plot,
+              text: plot
+          }));
+        }
+        for (let plot of qSpecies) {
+          $('#qSpecies').append($('<option>', {
+              value: plot,
+              text: plot
+          }));
+        }
+
+        if(!$('.data2').hasClass('show')){
+          $('.data2').addClass('show');
+
+        }
+      });
+    }
+    function parseSVG(s) {
+        var div= document.createElementNS('http://www.w3.org/1999/xhtml', 'div');
+        div.innerHTML= '<svg xmlns="http://www.w3.org/2000/svg">'+s+'</svg>';
+        var frag= document.createDocumentFragment();
+        while (div.firstChild.firstChild)
+            frag.appendChild(div.firstChild.firstChild);
+        return frag;
+    }
+    function distance(A , B){
+      var a = A[0] - B[0];
+      var b = A[1] - B[1];
+      return Math.sqrt( a*a + b*b );
+    }
+    function Overlap(){
+      if(A && B && $('#A').val() && $('#B').val()){
+        $('.point').remove();
+        $('.circle').remove();
+        $('svg').append( parseSVG(`<circle class='circle' cx="${A.x}" cy="${A.y}" r="${$('#A').val()}" stroke="black" stroke-width="2" fill="none" />`));
+        $('svg').append( parseSVG(`<circle class='circle' cx="${B.x}" cy="${B.y}" r="${$('#B').val()}" stroke="black" stroke-width="2" fill="none" />`));
+        $.get('./data/trees.csv', function (text) {
+            let data = $.csv.toObjects(text);
+            function Draw(long, lat, color){
+                $('svg').append( parseSVG(`<circle class='point'  cx="${currentProjection([long, lat])[0]}" cy="${currentProjection([long, lat])[1] }" r="1" fill="${color}" />`))
+            }
+            data.forEach((line)=>{
+              var currentpoint = currentProjection([line.Longitude, line.Latitude]);
+              var inCircleA = distance([A.x, A.y], currentpoint) < $('#A').val();
+              var inCircleB = distance([B.x, B.y], currentpoint) < $('#B').val();
+              if(inCircleA && inCircleB){
+                Draw(line.Longitude, line.Latitude, 'green')
+              };
+            })
+        })
+      }
+    }
+    function AddData(){
+
+      var x1 = A.x;
+      var y1 = A.y
+      if (B){
+        var x2 = B.x;
+        var y2 = B.y
+      }
+      $('.longlat').remove();
+      $('.data').append(`<div class="longlat"><div class='a'><b>A</b>: ${x1}, ${y1}</div><div class='b'><b>B</b>:${x2}, ${y2}</div></div>`)
+    }
+    function clicked(evt){
+      var e = evt.target;
+      var dim = e.getBoundingClientRect();
+      var x = evt.clientX - dim.left;
+      var y = evt.clientY - dim.top;
+      y = Number(y.toFixed(0))
+      if(!haveA){
+        A = {x, y};
+        haveA = true;
+      }else{
+        B = {x, y};
+        haveA = false;
+      }
+      AddData(A, B);
+    }
+    function DrawMap(){
+      var width = 750,
+      height = width;
+      // Set up projection that map is using
+      var projection = d3.geoMercator()
+      .center([-122.433701, 37.767683])
+      // San Francisco, roughly
+      .scale(225000)
+      .translate([width / 2, height / 2]);
+      // Add an svg element to the DOM
+      $('.map').html('');
+      var svg = d3.select(".map").append("svg")
+      .attr("width", width)
+      .attr("height", height);
+      // Add svg map at correct size, assumes map is saved in a subdirectory called "data"
+      svg.append("image")
+      .attr("width", width)
+      .attr("height", height)
+      .attr("xlink:href", "data/sf-map.svg");
+      return projection;
+    }
+    function Circle(){
+        if($('.data2').hasClass('show')){
+          $('.data2').removeClass('show')
+        }
+        var projection = DrawMap();
+        currentProjection = projection;
+        $('svg').attr('onclick', 'clicked(evt)');
+        if(!$('.data').hasClass('show')){
+          $('.data').addClass('show');
+        }
+    }
+    function LoadAll(){
+        if($('.data').hasClass('show')){
+          $('.data').removeClass('show')
+        }
+        if($('.data2').hasClass('show')){
+          $('.data2').removeClass('show')
+        }
+        var projection = DrawMap();
+        currentProjection = projection;
+        function Draw(long, lat, color){
+            $('svg').append( parseSVG(`<circle class='point'  cx="${currentProjection([long, lat])[0]}" cy="${currentProjection([long, lat])[1] }" r="1" fill="${color}" />`))
+        }
+        $.get('./data/trees.csv', function (text) {
+            let data = $.csv.toObjects(text);
+            data.forEach((line)=>{
+              Draw(line.Longitude, line.Latitude, 'green')
+            })
+        })
+      }
+
+  </script>
+</body>
+
 </html>
