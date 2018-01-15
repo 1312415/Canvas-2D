@@ -1,243 +1,199 @@
-<!DOCTYPE html>
 <html>
+
 <head>
-  <script src="https://d3js.org/d3.v4.min.js"></script>
-  <script src="https://d3js.org/d3-array.v1.min.js"></script>
-  <script src="https://d3js.org/d3-geo.v1.min.js"></script>
-  <style media="screen">
-    .data, .data2{
-      display: none;
-    }
-    .show{
-      display: block !important;
-    }
-  </style>
-  <script
-    src="https://code.jquery.com/jquery-3.2.1.min.js"
-    integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
-    crossorigin="anonymous">
-  </script>
-  <script src="./jquery.csv.js"></script>
-</head>
-<body>
-    <button type="button" onclick='LoadAll()'>
-      load All
-    </button>
-    <button type="button" onclick='Circle()'>
-      Overlap 2 circle
-    </button>
-    <button type="button" onclick='Query()'>
-      Query
-    </button>
+  <script src="https://code.jquery.com/jquery-3.2.1.js" integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE=" crossorigin="anonymous"></script>
+  <script src="lib/d3/d3.js"></script>
+  <script src="lib/d3/d3.layout.cloud.js"></script>
+  <script src="d3.wordcloud.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <div class="data">
-      <div class="row">
-        <button type="button" name="button" onclick='Overlap()'>
-          overlap
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+
+  <body>
+    <div class="container">
+      <div id="circularG">
+        <div id="circularG_1" class="circularG"></div>
+        <div id="circularG_2" class="circularG"></div>
+        <div id="circularG_3" class="circularG"></div>
+        <div id="circularG_4" class="circularG"></div>
+        <div id="circularG_5" class="circularG"></div>
+        <div id="circularG_6" class="circularG"></div>
+        <div id="circularG_7" class="circularG"></div>
+        <div id="circularG_8" class="circularG"></div>
+      </div>
+      <div class="w3-content w3-display-container">
+        <div class="mySlides"  >
+          <div id="my_canvas">
+          </div>
+          <h1>
+            Accept
+          </h1>
+        </div >
+        <div class="mySlides">
+          <div id="my_canvas1">
+          </div>
+          <h1>
+            Reject
+          </h1>
+        </div>
+        <button class="w3-button w3-black w3-display-left" onclick="plusDivs(-1)">&#10094;</button>
+        <button class="w3-button w3-black w3-display-right" onclick="plusDivs(1)">&#10095;</button>
+      </div>
+      <div class="popup">
+        <h1 class='title'>
+          '...'
+        </h1>
+        <h2 class='show'>
+          '..'
+        </h2>
+        <button id='close' onclick='closePopup()'>
+        ok
         </button>
       </div>
-      <label for="A">Radious of A</label>
-      <input type="number" name="R1" value="" id='A'>
-      <label for="B">Radious of B</label>
-      <input type="number" name="R2" value="" id='B'>
-
-
-    </div>
-    <div class="data2">
-      <div class="row">
-        <label for="DBH">>DBH</label>
-        <input type="number" value="" id='DBH'>
-        <label for="PlotSize">PlotSize</label>
-        <select id='PlotSize'>
-            <option value = '-1'>.......</option>
-        </select>
-        <br>
-        <label for="qSpecies">Species</label>
-        <select id='qSpecies'>
-            <option value = '-1'>.......</option>
-        </select>
-        <br>
-        <button type="button" name="button" onclick='QueryClick()'>
-          query
-        </button>
-
+      <div class="form-group">
+        <h3>Search word</h3>
+        <input id='line2' type="text" name="line" value="">
+        <button  name="button" onclick="find()">submit</button>
+        <div class="text2">
+        </div>
+      </div>
+      <div class="form-group">
+        <h3>Insert your ads here</h3>
+        <input id='line' type="text" name="line" value="">
+        <button id='submit' name="button" onclick="calculate()">submit</button>
+        <div class="text">
+        </div>
       </div>
 
     </div>
-    <div class="map">
-
-    </div>
-    <script type="text/javascript">
-    var haveA = false;
-    var A,B;
-    var currentProjection;
-    var Globaldata;
-    function QueryClick(){
-      var data = Globaldata;
-      var processedData = [];
-      function Draw(long, lat, color){
-          $('svg').append( parseSVG(`<circle class='point'  cx="${currentProjection([long, lat])[0]}" cy="${currentProjection([long, lat])[1] }" r="1" fill="${color}" />`))
-      }
-      $('.point').remove();
-      data.forEach((line)=>{
-        if( !$('#DBH').val() || ($('#DBH').val() && $('#DBH').val() <= Number(line.DBH)) ){
-           if( $('#PlotSize').val() == -1 ||  $('#PlotSize').val() === line.PlotSize ){
-             if( $('#qSpecies').val() == -1 ||  $('#qSpecies').val() === line.qSpecies ){
-               Draw(line.Longitude, line.Latitude, 'green')
-             }
-           }
-         }
-      })
-    }
-    function Query(){
-      if($('.data').hasClass('show')){
-        $('.data').removeClass('show')
-      }
-      var projection = DrawMap();
-      currentProjection = projection;
-      $.get('/data/trees.csv', function (text) {
-        let data = $.csv.toObjects(text);
-          var PlotSize = new Set();
-          var qSpecies = new Set();
-          Globaldata = data;
-        data.forEach((line)=>{
-          PlotSize.add(line.PlotSize);
-          qSpecies.add(line.qSpecies);
-        })
-
-        for (let plot of PlotSize) {
-          $('#PlotSize').append($('<option>', {
-              value: plot,
-              text: plot
-          }));
-        }
-        for (let plot of qSpecies) {
-          $('#qSpecies').append($('<option>', {
-              value: plot,
-              text: plot
-          }));
-        }
-
-        if(!$('.data2').hasClass('show')){
-          $('.data2').addClass('show');
-
-        }
-      });
-    }
-    function parseSVG(s) {
-        var div= document.createElementNS('http://www.w3.org/1999/xhtml', 'div');
-        div.innerHTML= '<svg xmlns="http://www.w3.org/2000/svg">'+s+'</svg>';
-        var frag= document.createDocumentFragment();
-        while (div.firstChild.firstChild)
-            frag.appendChild(div.firstChild.firstChild);
-        return frag;
-    }
-    function distance(A , B){
-      var a = A[0] - B[0];
-      var b = A[1] - B[1];
-      return Math.sqrt( a*a + b*b );
-    }
-    function Overlap(){
-      if(A && B && $('#A').val() && $('#B').val()){
-        $('.point').remove();
-        $('.circle').remove();
-        $('svg').append( parseSVG(`<circle class='circle' cx="${A.x}" cy="${A.y}" r="${$('#A').val()}" stroke="black" stroke-width="2" fill="none" />`));
-        $('svg').append( parseSVG(`<circle class='circle' cx="${B.x}" cy="${B.y}" r="${$('#B').val()}" stroke="black" stroke-width="2" fill="none" />`));
-        $.get('./data/trees.csv', function (text) {
-            let data = $.csv.toObjects(text);
-            function Draw(long, lat, color){
-                $('svg').append( parseSVG(`<circle class='point'  cx="${currentProjection([long, lat])[0]}" cy="${currentProjection([long, lat])[1] }" r="1" fill="${color}" />`))
+    <script>
+    let adWord = [];
+    let adWord_1 = [];
+    let map = new Map();
+    let map2 = new Map();
+    var slideIndex = 1;
+    showDivs(slideIndex);
+    function plusDivs(n) {
+        showDivs(slideIndex += n);
+        WordCloud(document.getElementById('my_canvas'), {
+          list: adWord,
+          click: function (item, dimension, event) {
+              $('#my_canvas').addClass('overlay');
+              $('.popup').addClass('block')
+              $('.show').html(`count: ${item[1]}`);
+              $('.title').html(item[0])
             }
-            data.forEach((line)=>{
-              var currentpoint = currentProjection([line.Longitude, line.Latitude]);
-              var inCircleA = distance([A.x, A.y], currentpoint) < $('#A').val();
-              var inCircleB = distance([B.x, B.y], currentpoint) < $('#B').val();
-              if(inCircleA && inCircleB){
-                Draw(line.Longitude, line.Latitude, 'green')
-              };
-            })
+        });
+        WordCloud(document.getElementById('my_canvas1'), {
+          list: adWord_1,
+          click: function (item, dimension, event) {
+              $('#my_canvas1').addClass('overlay');
+              $('.popup').addClass('block')
+              $('.show').html(`count: ${item[1]}`);
+              $('.title').html(item[0])
+            }
+        });
+    }
+    function showDivs(n) {
+        var i;
+        var x = document.getElementsByClassName("mySlides");
+        if (n > x.length) {slideIndex = 1}
+        if (n < 1) {slideIndex = x.length} ;
+        for (i = 0; i < x.length; i++) {
+            x[i].style.display = "none";
+        }
+        x[slideIndex-1].style.display = "block";
+    }
+    function closePopup() {
+      $('#my_canvas').removeClass('overlay');
+      $('#my_canvas1').removeClass('overlay');
+      $('.popup').removeClass('block');
+    }
+    $.get('text.txt', function (text) {
+      $.get('text2.txt', function (text2) {
+        let file = text.split(' ')
+        let lines = [];
+
+
+        file.forEach((word) => {
+            if (map.has(word)) {
+              map.set(word, map.get(word) + 1);
+            } else {
+              map.set(word, 1);
+            }
         })
-      }
-    }
-    function AddData(){
-
-      var x1 = A.x;
-      var y1 = A.y
-      if (B){
-        var x2 = B.x;
-        var y2 = B.y
-      }
-      $('.longlat').remove();
-      $('.data').append(`<div class="longlat"><div class='a'><b>A</b>: ${x1}, ${y1}</div><div class='b'><b>B</b>:${x2}, ${y2}</div></div>`)
-    }
-    function clicked(evt){
-      var e = evt.target;
-      var dim = e.getBoundingClientRect();
-      var x = evt.clientX - dim.left;
-      var y = evt.clientY - dim.top;
-      y = Number(y.toFixed(0))
-      if(!haveA){
-        A = {x, y};
-        haveA = true;
-      }else{
-        B = {x, y};
-        haveA = false;
-      }
-      AddData(A, B);
-    }
-    function DrawMap(){
-      var width = 750,
-      height = width;
-      // Set up projection that map is using
-      var projection = d3.geoMercator()
-      .center([-122.433701, 37.767683])
-      // San Francisco, roughly
-      .scale(225000)
-      .translate([width / 2, height / 2]);
-      // Add an svg element to the DOM
-      $('.map').html('');
-      var svg = d3.select(".map").append("svg")
-      .attr("width", width)
-      .attr("height", height);
-      // Add svg map at correct size, assumes map is saved in a subdirectory called "data"
-      svg.append("image")
-      .attr("width", width)
-      .attr("height", height)
-      .attr("xlink:href", "data/sf-map.svg");
-      return projection;
-    }
-    function Circle(){
-        if($('.data2').hasClass('show')){
-          $('.data2').removeClass('show')
-        }
-        var projection = DrawMap();
-        currentProjection = projection;
-        $('svg').attr('onclick', 'clicked(evt)');
-        if(!$('.data').hasClass('show')){
-          $('.data').addClass('show');
-        }
-    }
-    function LoadAll(){
-        if($('.data').hasClass('show')){
-          $('.data').removeClass('show')
-        }
-        if($('.data2').hasClass('show')){
-          $('.data2').removeClass('show')
-        }
-        var projection = DrawMap();
-        currentProjection = projection;
-        function Draw(long, lat, color){
-            $('svg').append( parseSVG(`<circle class='point'  cx="${currentProjection([long, lat])[0]}" cy="${currentProjection([long, lat])[1] }" r="1" fill="${color}" />`))
-        }
-        $.get('./data/trees.csv', function (text) {
-            let data = $.csv.toObjects(text);
-            data.forEach((line)=>{
-              Draw(line.Longitude, line.Latitude, 'green')
-            })
+        file = text2.split(' ')
+        file.forEach((word) => {
+            if (map2.has(word)) {
+              map2.set(word, map2.get(word) + 1);
+            } else {
+              map2.set(word, 1);
+            }
         })
-      }
+        for (let word of map) {
+          if (word[1] >= 10) {
+            adWord.push(word)
+          }
+        }
+        for (let word of map2) {
+          if (word[1] >= 10) {
+            adWord_1.push(word)
+          }
+        }
+        // for (let word of map_1) {
+        //   if (word[0].startsWith('ad-') && word[1] >= 5) {
+        //     adWord_1.push({
+        //       text: word[0].substring(3, word[0].length),
+        //       size: word[1]
+        //     })
+        //   }
+        // }
+        $('#circularG').remove();
+        WordCloud(document.getElementById('my_canvas'), {
+          list: adWord,
+          click: function (item, dimension, event) {
+              $('#my_canvas').addClass('overlay');
+              $('.popup').addClass('block')
+              $('.show').html(`count: ${item[1]}`);
+              $('.title').html(item[0])
+            }
+        });
 
-  </script>
-</body>
 
-</html>
+        });
+      })
+    function calculate(){
+      var line = $('#line').val();
+      var words = line.split(' ');
+      var result = 0;
+      words.forEach((word)=>{
+        var a = map.get(word)? map.get(word) : 0;
+        var b = map2.get(word)? map2.get(word) : 0;
+        if(a===b && a===0){
+          result += 0.5;
+        }else{
+          result += a/(a+b);
+        }
+      })
+
+
+      result = result / words.length;
+      result *= 100;
+      result = result.toFixed(2);
+      $('.text').html('acceptance chance: ' + result + '%');
+    }
+    function find(){
+      var line = $('#line2').val();
+      var words = line.split(' ');
+      var result = 0;
+      var word = words[0];
+      var a = map.get(word)? map.get(word) : 0;
+      var b = map2.get(word)? map2.get(word) : 0;
+      $('.text2').html('accept: ' + a + ' reject: ' + b);
+    }
+    </script>
+  </body>
+
+  </html>
